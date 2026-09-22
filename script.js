@@ -241,11 +241,17 @@ function showAlert(message) {
     const messageBox = document.getElementById('messageBox');
     const messageText = document.getElementById('messageText');
     messageText.textContent = message;
-    messageBox.classList.remove('hidden', 'bg-red-500', 'bg-green-500');
-    messageBox.classList.add('bg-red-500');
+    messageBox.classList.remove('hidden');
+    // Animate in
+    setTimeout(() => {
+        messageBox.classList.remove('translate-y-10', 'opacity-0');
+    }, 10);
 
     setTimeout(() => {
-        messageBox.classList.add('hidden');
+        messageBox.classList.add('translate-y-10', 'opacity-0');
+        setTimeout(() => {
+            messageBox.classList.add('hidden');
+        }, 300);
     }, 4000);
 }
 
@@ -312,11 +318,11 @@ function predictProbability(formData) {
 
 function generateQuestionHTML(q) {
     return `
-        <div class="input-group">
-            <label for="${q.id}" class="block text-sm font-medium text-gray-700">${q.text}</label>
+        <div class="input-group group">
+            <label for="${q.id}" class="block text-base font-bold text-fuchsia-950 mb-2 group-hover:text-fuchsia-600 transition-colors">${q.text}</label>
             <select id="${q.id}" name="${q.id}" required 
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border bg-white">
-                <option value="">Select</option>
+                    class="w-full rounded-2xl border-2 border-fuchsia-200 bg-white px-4 py-3 text-lg font-bold focus:border-fuchsia-500 focus:outline-none focus:ring-4 focus:ring-fuchsia-500/20 transition-all cursor-pointer hover:border-fuchsia-400 hover:shadow-md">
+                <option value="" disabled selected>Select...</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
             </select>
@@ -332,14 +338,23 @@ function loadQuestions() {
     
     // Insert new section heading
     const sectionHeading = document.createElement('div');
-    sectionHeading.className = 'md:col-span-2 border-b pt-4 pb-4 mb-4';
-    sectionHeading.innerHTML = `<h2 class="text-xl font-semibold text-gray-800">2. ${CURRENT_MODEL.TITLE} Factors</h2><p class="text-sm text-gray-400 mt-1">Questions tailored to the selected program.</p>`;
+    sectionHeading.className = 'mb-6 flex items-center gap-3';
+    sectionHeading.innerHTML = `
+        <span class="bg-fuchsia-200 text-fuchsia-800 w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm transform rotate-3">2</span>
+        <h2 class="text-2xl font-black text-fuchsia-950">${CURRENT_MODEL.TITLE} Factors</h2>
+    `;
     container.appendChild(sectionHeading);
+
+    // Create a grid for dynamic questions
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'grid grid-cols-1 gap-6';
 
     // Insert questions for the current model
     CURRENT_MODEL.QUESTIONS.forEach(q => {
-        container.insertAdjacentHTML('beforeend', generateQuestionHTML(q));
+        gridContainer.insertAdjacentHTML('beforeend', generateQuestionHTML(q));
     });
+    
+    container.appendChild(gridContainer);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -467,28 +482,46 @@ function displayResult(p_confirm) {
     let barColor = '';
 
     if (clamped_p_confirm >= 0.8) {
-        message = `HIGH CHANCE: You are surely to be confirmed with a probability of ${percentage}% as a ${CURRENT_MODEL.TITLE} student.`;
-        resultClass = 'text-green-600';
-        barColor = 'bg-green-500';
+        message = `🎉 AMAZING CHANCE (${percentage}%) 🎉<br/>You are very likely to be confirmed!`;
+        resultClass = 'text-emerald-600';
+        barColor = 'bg-gradient-to-r from-emerald-400 to-emerald-500';
+        
+        // Trigger confetti!
+        if (typeof confetti === 'function') {
+            setTimeout(() => {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#34d399', '#10b981', '#f59e0b', '#8b5cf6']
+                });
+            }, 300);
+        }
     } else if (clamped_p_confirm >= 0.5) {
-        message = `MODERATE CHANCE: You are likely to be confirmed with a probability of ${percentage}% as a ${CURRENT_MODEL.TITLE} student.`;
-        resultClass = 'text-yellow-600';
-        barColor = 'bg-yellow-500';
+        message = `👍 MODERATE CHANCE (${percentage}%) 👍<br/>You are likely to be confirmed.`;
+        resultClass = 'text-amber-600';
+        barColor = 'bg-gradient-to-r from-amber-400 to-amber-500';
     } else {
-        message = `LOW CHANCE: You are unlikely to be confirmed with a probability of ${percentage}% as a ${CURRENT_MODEL.TITLE} student.`;
-        resultClass = 'text-red-600';
-        barColor = 'bg-red-500';
+        message = `😬 LOW CHANCE (${percentage}%) 😬<br/>You are unlikely to be confirmed.`;
+        resultClass = 'text-rose-600';
+        barColor = 'bg-gradient-to-r from-rose-400 to-rose-500';
     }
 
-    resultText.innerHTML = `<p class="text-lg font-semibold ${resultClass}">${message}</p>`;
+    resultText.innerHTML = `<p class="text-2xl font-black ${resultClass}">${message}</p>`;
+    
+    // Show card and animate in
     resultCard.classList.remove('hidden');
+    setTimeout(() => {
+        resultCard.classList.remove('scale-95', 'opacity-0');
+        resultCard.classList.add('scale-100', 'opacity-100');
+    }, 50);
     
     progressFill.style.width = '0%'; 
-    progressFill.className = `h-4 rounded-full transition-all duration-1000 ease-out ${barColor}`;
+    progressFill.className = `h-full rounded-full transition-all duration-1500 ease-out relative overflow-hidden ${barColor}`;
     
     setTimeout(() => {
         progressFill.style.width = `${percentage}%`;
-    }, 50);
+    }, 300);
 
-    resultCard.scrollIntoView({ behavior: 'smooth' });
-} 
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}

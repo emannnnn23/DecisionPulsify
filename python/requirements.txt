@@ -1,0 +1,6 @@
+# Offline model training / analysis only (not needed by the deployed API)
+pandas
+openpyxl
+scikit-learn
+imbalanced-learn
+numpy

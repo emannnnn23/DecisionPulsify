@@ -1,0 +1,549 @@
+:root {
+    --desk: #DFE9E2;
+    --paper: #FAFCF7;
+    --ink: #1E6B4E;          /* answer-sheet dropout green */
+    --ink-soft: #A3D0BB;
+    --wash: #EBF5EF;
+    --graphite: #2E3134;     /* pencil */
+    --red-pen: #B4323F;
+    --ochre: #8C6210;
+
+    --font: 'Archivo', system-ui, sans-serif;
+    --measure: 40rem;
+    --oval-h: 2.5rem;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 2.5rem 1rem 4rem;
+    background: var(--desk);
+    color: var(--graphite);
+    font-family: var(--font);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    font-variation-settings: 'wdth' 100;
+}
+
+h1,
+h2,
+p {
+    margin: 0;
+}
+
+fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+legend {
+    padding: 0;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+/* ---------- The sheet ---------- */
+
+.sheet {
+    position: relative;
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 3rem 3.5rem 2.5rem;
+    background: var(--paper);
+    border: 1px solid var(--ink-soft);
+}
+
+.reg {
+    position: absolute;
+    width: 0.875rem;
+    height: 0.875rem;
+    background: var(--graphite);
+}
+
+.reg--tl { top: 1rem; left: 1rem; }
+.reg--tr { top: 1rem; right: 1rem; }
+.reg--bl { bottom: 1rem; left: 1rem; }
+.reg--br { bottom: 1rem; right: 1rem; }
+
+/* ---------- Masthead: the name grid ---------- */
+
+.masthead {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2.5rem;
+    align-items: start;
+    padding-bottom: 2.5rem;
+    border-bottom: 2px solid var(--ink);
+}
+
+.namegrid {
+    --cell: 2.75rem;
+    border: 2px solid var(--ink);
+}
+
+.namegrid__boxes {
+    display: grid;
+    grid-template-columns: repeat(5, var(--cell));
+    border-bottom: 2px solid var(--ink);
+}
+
+.namegrid__boxes span {
+    display: grid;
+    place-items: center;
+    height: 3.25rem;
+    font-size: 2rem;
+    font-weight: 850;
+    font-variation-settings: 'wdth' 125;
+    line-height: 1;
+    color: var(--graphite);
+}
+
+.namegrid__boxes span + span {
+    border-left: 1px solid var(--ink-soft);
+}
+
+.namegrid__bubbles {
+    display: grid;
+    grid-template-columns: repeat(5, var(--cell));
+    padding: 0.5rem 0;
+}
+
+.namegrid__col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.namegrid__col + .namegrid__col {
+    border-left: 1px solid var(--ink-soft);
+}
+
+.nb {
+    display: grid;
+    place-items: center;
+    width: 1.125rem;
+    height: 0.8125rem;
+    border: 1px solid var(--ink-soft);
+    border-radius: 50%;
+    font-size: 0.4375rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ink);
+}
+
+.nb.is-shaded {
+    background: var(--graphite);
+    border-color: var(--graphite);
+    color: transparent;
+}
+
+.masthead__copy {
+    max-width: 26rem;
+    padding-top: 0.25rem;
+}
+
+.lede {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 600;
+    font-variation-settings: 'wdth' 92;
+    color: var(--graphite);
+}
+
+.instruction {
+    margin-top: 1.25rem;
+    color: var(--ink);
+    font-weight: 500;
+}
+
+/* ---------- Parts and items ---------- */
+
+.part {
+    padding: 2.25rem 0 0.5rem;
+}
+
+.part__title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    font-size: 1.5rem;
+    line-height: 1.2;
+    font-weight: 750;
+    font-variation-settings: 'wdth' 112;
+    color: var(--graphite);
+}
+
+.part__num {
+    font-size: 1rem;
+    font-weight: 600;
+    font-variation-settings: 'wdth' 100;
+    color: var(--ink);
+}
+
+.item {
+    position: relative;
+    padding: 1rem 0;
+    border-top: 1px solid var(--ink-soft);
+    scroll-margin-top: 1.5rem;
+}
+
+.item--numbered {
+    padding-left: 2.5rem;
+}
+
+/* float + full width makes a legend behave like an ordinary block */
+.part > legend,
+.item > legend {
+    float: left;
+    width: 100%;
+}
+
+.part > legend + *,
+.item > legend + * {
+    clear: both;
+}
+
+.item__q {
+    display: block;
+    max-width: var(--measure);
+    margin-bottom: 0.75rem;
+    font-size: 1.0625rem;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.item__n {
+    position: absolute;
+    left: 0;
+    top: 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.7;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.item.is-missing .item__q,
+.item.is-missing .item__n {
+    color: var(--red-pen);
+}
+
+.item.is-missing .oval span {
+    border-color: var(--red-pen);
+}
+
+/* ---------- Ovals (radio answers) ---------- */
+
+.ovals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.625rem;
+}
+
+.ovals--stack {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.oval {
+    position: relative;
+    cursor: pointer;
+}
+
+.oval input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.oval span {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--oval-h);
+    min-width: 4.5rem;
+    justify-content: center;
+    padding: 0 1.125rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.2;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.ovals--stack .oval span {
+    font-size: 1.125rem;
+    min-height: 2.75rem;
+    padding: 0 1.375rem;
+}
+
+.oval:hover span {
+    background: var(--wash);
+}
+
+.oval input:checked + span {
+    background: var(--graphite);
+    border-color: var(--graphite);
+    color: var(--paper);
+}
+
+.oval input:focus-visible + span,
+.writein:focus-visible,
+.submit:focus-visible,
+.link-button:focus-visible {
+    outline: 3px solid var(--ink);
+    outline-offset: 3px;
+}
+
+/* ---------- Write-in box ---------- */
+
+.writein {
+    width: 9rem;
+    height: 3rem;
+    padding: 0 0.75rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 0;
+    background: var(--paper);
+    color: var(--graphite);
+    font: inherit;
+    font-size: 1.375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+}
+
+.writein::placeholder {
+    color: var(--ink-soft);
+}
+
+/* ---------- Submit ---------- */
+
+.submit-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+    padding: 2rem 0 0.5rem;
+    border-top: 2px solid var(--ink);
+    margin-top: 1rem;
+}
+
+.submit {
+    min-height: 3.25rem;
+    padding: 0 1.75rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--graphite);
+    color: var(--paper);
+    font: inherit;
+    font-size: 1.125rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.submit:hover {
+    background: #000;
+}
+
+.submit:disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.progress {
+    color: var(--ink);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Result ---------- */
+
+.result {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 2px solid var(--ink);
+    outline: none;
+}
+
+.result__figure {
+    display: flex;
+    align-items: baseline;
+    font-size: 5.5rem;
+    line-height: 0.9;
+    font-weight: 850;
+    font-variation-settings: 'wdth' 125;
+    font-variant-numeric: tabular-nums;
+    color: var(--tone, var(--graphite));
+}
+
+.result__unit {
+    font-size: 0.45em;
+    margin-left: 0.1em;
+}
+
+.result__caption {
+    margin-top: 0.5rem;
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.result__bar {
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    gap: 0.375rem;
+    max-width: 34rem;
+    margin: 1.5rem 0;
+}
+
+.result__bar .nb {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    border-color: var(--ink-soft);
+}
+
+.result__bar .nb.is-shaded {
+    background: var(--tone, var(--graphite));
+    border-color: var(--tone, var(--graphite));
+}
+
+.result__text {
+    max-width: var(--measure);
+    font-size: 1.125rem;
+}
+
+.result__text strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 1.375rem;
+    font-weight: 750;
+    font-variation-settings: 'wdth' 106;
+    color: var(--tone, var(--graphite));
+}
+
+.result--high { --tone: var(--ink); }
+.result--mid { --tone: var(--ochre); }
+.result--low { --tone: var(--red-pen); }
+
+.link-button {
+    margin-top: 1.5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+/* ---------- Footer + toast ---------- */
+
+.colophon {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--ink-soft);
+    color: var(--ink);
+    font-size: 0.875rem;
+}
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.25rem;
+    transform: translateX(-50%);
+    width: min(28rem, calc(100% - 2rem));
+    padding: 0.875rem 1.125rem;
+    background: var(--paper);
+    border: 2px solid var(--red-pen);
+    color: var(--red-pen);
+    font-weight: 600;
+    z-index: 10;
+}
+
+/* ---------- Small screens ---------- */
+
+@media (max-width: 40rem) {
+    body {
+        padding: 1rem 0.5rem 3rem;
+    }
+
+    .sheet {
+        padding: 2.5rem 1.25rem 2rem;
+    }
+
+    .reg {
+        width: 0.625rem;
+        height: 0.625rem;
+    }
+
+    .reg--tl, .reg--tr { top: 0.625rem; }
+    .reg--bl, .reg--br { bottom: 0.625rem; }
+    .reg--tl, .reg--bl { left: 0.625rem; }
+    .reg--tr, .reg--br { right: 0.625rem; }
+
+    .masthead {
+        grid-template-columns: 1fr;
+        gap: 1.75rem;
+    }
+
+    .namegrid {
+        --cell: 2.5rem;
+        justify-self: start;
+    }
+
+    .namegrid__boxes span {
+        height: 2.75rem;
+        font-size: 1.75rem;
+    }
+
+    .namegrid__col {
+        gap: 1px;
+    }
+
+    .nb {
+        width: 1rem;
+        height: 0.625rem;
+        font-size: 0;
+    }
+
+    .lede {
+        font-size: 1.3125rem;
+    }
+
+    .result__figure {
+        font-size: 4.5rem;
+    }
+
+    .result__bar {
+        gap: 0.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+}

@@ -15,111 +15,77 @@ DecisionPulse is a dynamic web application designed to facilitate structured dec
 -   **Intuitive User Interface**: A responsive and easy-to-use interface for seamless interaction.
 -   **Extensible Design**: A Python directory is included, allowing for the integration of advanced algorithms, data processing, or backend functionalities.
 
-## 🚀 Quick Start
-
-Follow these steps to get DecisionPulse up and running on your local machine.
-
-### Prerequisites
-
--   A modern web browser (Chrome, Firefox, Edge, Safari).
--   **Optional (for Python scripts):** Python 3.x installed on your system.
-
-### Installation
-
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/reyxdz/DecisionPulse.git
-    cd DecisionPulse
-    ```
-
-### Running the Web Application
-
-1.  **Open in your browser**
-    Simply open the `index.html` file in your preferred web browser.
-    ```bash
-    # On most systems, you can simply:
-    open index.html
-    # Or navigate to the file path directly in your browser:
-    # file:///path/to/DecisionPulse/index.html
-    ```
-    This will launch the interactive DecisionPulse application.
-
-### Python Backend/Script Setup (Optional)
-
-If you intend to use or develop the Python components:
-
-1.  **Navigate to the Python directory**
-    ```bash
-    cd python
-    ```
-2.  **Install dependencies**
-    If a `requirements.txt` file is present in the `python/` directory, install the necessary dependencies:
-    ```bash
-    # Make sure you have pip installed
-    pip install -r requirements.txt
-    ```
-    *(Note: No `requirements.txt` was detected in the root, check `python/` subdirectories if applicable.)*
-
-3.  **Run Python scripts**
-    Refer to specific instructions within the `python/` directory for how to run any scripts or launch a potential backend service.
-    *(Example, if `app.py` exists):*
-    ```bash
-    python app.py
-    ```
-
 ## 📁 Project Structure
 
 ```
 DecisionPulse/
-├── .vscode/          # VS Code editor configuration
-├── index.html        # Main entry point for the web application
-├── python/           # Directory for Python-related scripts or backend logic
-├── script.js         # Core JavaScript logic for the web application
-├── web/              # (Empty, placeholder for potential future web assets or modules)
-└── README.md         # Project README file
+├── frontend/              # Static site → deployed on Vercel
+│   ├── index.html
+│   ├── styles.css
+│   ├── script.js          # UI logic + local fallback model
+│   ├── config.js          # Backend API URL
+│   └── vercel.json
+├── backend/               # FastAPI prediction API → deployed on Render
+│   ├── app/main.py        # Endpoints: /health, /api/courses, /api/predict
+│   ├── app/models.py      # Logistic regression coefficients per course
+│   └── requirements.txt
+├── python/                # Offline model training/analysis (not deployed)
+├── render.yaml            # Render Blueprint for the backend
+└── web/                   # Legacy Firebase Hosting copy (unused)
 ```
 
-## ⚙️ Configuration
+## 🚀 Running Locally
 
-The primary configuration for the web application is handled directly within `script.js` or via interactive elements in `index.html`.
-
-### Environment Variables
-No explicit environment variables (`.env` file) are detected for the web application. Any configuration or API keys for the Python part would typically be handled within the `python/` directory.
-
-## 🔧 Development
-
-### Frontend Development
-To develop the frontend:
-1.  Make changes to `index.html` (HTML structure, static content, embedded styles).
-2.  Update `script.js` for application logic, DOM manipulation, and interactive features.
-3.  Modify CSS directly within `index.html` or in a separate `style.css` (if created) to adjust the application's appearance.
-
-### Python Development
-If you are developing the Python component:
-1.  Navigate into the `python/` directory.
-2.  Write or modify Python scripts (`.py` files) as needed for data processing, algorithms, or API endpoints.
-
-## 🧪 Testing
-
-### Frontend Testing
-Given the vanilla JavaScript nature, testing is primarily manual by opening `index.html` in a browser and interacting with the application. Debugging can be done using browser developer tools.
-
-### Python Testing
-For Python components, if unit tests are implemented (e.g., using `unittest` or `pytest`), they would typically reside within the `python/` directory.
+**Backend**
 ```bash
-# Example if Pytest is used in python/
-cd python
-pytest
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+# API docs: http://localhost:8000/docs
 ```
 
-## 🚀 Deployment
+**Frontend**
+```bash
+cd frontend
+python -m http.server 5500
+# open http://localhost:5500 (automatically talks to http://localhost:8000)
+```
 
-The web application is a static site and can be deployed by hosting the `index.html`, `script.js`, and any associated CSS/image files on any static web hosting service.
+If the API is unreachable, the frontend computes the prediction in the browser using the same coefficients.
 
-**Deployment Options:**
--   **GitHub Pages**: Push your code to a GitHub repository, and serve the `main` branch (or `docs` folder) via GitHub Pages.
--   **Netlify/Vercel**: Link your GitHub repository to Netlify or Vercel for continuous deployment of the static site.
--   **Any Web Server**: Upload the `index.html`, `script.js`, and other static assets to an Apache, Nginx, or similar web server.
+**Training script (optional)**
+```bash
+cd python
+pip install -r requirements.txt
+python data_preparation.py
+```
+
+## ☁️ Deployment
+
+### 1. Backend on Render
+1. Push this repo to GitHub.
+2. In Render: **New → Blueprint**, then select the repo. Render reads `render.yaml` and creates the `decisionpulse-api` web service.
+   - Manual alternative: **New → Web Service**, Root Directory `backend`, Build `pip install -r requirements.txt`, Start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, Health check `/health`.
+3. Copy the service URL (e.g. `https://decisionpulse-api.onrender.com`) and check `https://<your-url>/health`.
+
+### 2. Frontend on Vercel
+1. Set `PRODUCTION_API_URL` in `frontend/config.js` to your Render URL, then commit and push.
+2. In Vercel: **Add New → Project**, then import the repo.
+3. Set **Root Directory** to `frontend` and **Framework Preset** to `Other`. Leave the build command empty.
+4. Deploy.
+
+### 3. Lock down CORS
+In Render → Environment, set `ALLOWED_ORIGINS` to your Vercel URL (e.g. `https://decisionpulse.vercel.app`, comma-separate multiple). To also allow preview deploys, set `ALLOWED_ORIGIN_REGEX`, e.g. `https://decisionpulse.*\.vercel\.app`.
+
+> Render's free plan sleeps after inactivity, so the first request can take ~30–60s. The frontend waits 8s, then falls back to the in-browser model.
+
+### Environment variables (backend)
+| Variable | Default | Purpose |
+|---|---|---|
+| `ALLOWED_ORIGINS` | `*` | Comma-separated allowed frontend origins |
+| `ALLOWED_ORIGIN_REGEX` | – | Optional regex for allowed origins |
+| `PYTHON_VERSION` | `3.12.8` | Python version on Render |
 
 ## 🤝 Contributing
 
@@ -132,7 +98,7 @@ This project is currently without an explicit license. Please contact the reposi
 ## 🙏 Acknowledgments
 
 -   Built with vanilla HTML, CSS, and JavaScript.
--   Powered by Python for auxiliary scripting.
+-   Prediction API built with FastAPI.
 
 ## 📞 Support & Contact
 

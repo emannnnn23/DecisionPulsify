@@ -236,25 +236,6 @@ const MODELS = {
 
 let CURRENT_MODEL = CS_MODEL;
 
-// Custom function to show alert message instead of using window.alert()
-function showAlert(message) {
-    const messageBox = document.getElementById('messageBox');
-    const messageText = document.getElementById('messageText');
-    messageText.textContent = message;
-    messageBox.classList.remove('hidden');
-    // Animate in
-    setTimeout(() => {
-        messageBox.classList.remove('translate-y-10', 'opacity-0');
-    }, 10);
-
-    setTimeout(() => {
-        messageBox.classList.add('translate-y-10', 'opacity-0');
-        setTimeout(() => {
-            messageBox.classList.add('hidden');
-        }, 300);
-    }, 4000);
-}
-
 function scaleGWA(gwa) {
     const min = CURRENT_MODEL.GWA_SCALE.MIN;
     const max = CURRENT_MODEL.GWA_SCALE.MAX;
@@ -289,8 +270,8 @@ function predictProbability(formData) {
         } 
         // Check if it's a background feature
         else if (key.match(/^(with_honors)_(Yes|No)$/)) {
-            const [f_name, f_val] = key.split('_');
-            const form_value = formData.get(f_name);
+            const f_val = key.slice('with_honors_'.length);
+            const form_value = formData.get('with_honors');
             if (form_value && f_val === form_value) {
                 z += coeff;
             }
@@ -316,212 +297,260 @@ function predictProbability(formData) {
     return p_confirm;
 }
 
-function generateQuestionHTML(q) {
+// Asks the backend for a prediction; falls back to the in-browser model if the API
+// is unreachable (e.g. the Render free instance is still waking up).
+async function getPrediction(courseKey, formData) {
+    const apiBase = window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL;
+    const submitButton = document.querySelector('#predictionForm button[type="submit"]');
+    if (!apiBase) return predictProbability(formData);
+
+    const answers = {};
+    for (let i = 1; i <= 20; i++) answers[`q${i}`] = formData.get(`q${i}`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    if (submitButton) submitButton.disabled = true;
+
+    try {
+        const response = await fetch(`${apiBase}/api/predict`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+                course: courseKey,
+                gwa: parseFloat(formData.get('gwa')),
+                shs_strand: formData.get('shs_strand'),
+                high_school_type: formData.get('high_school_type'),
+                with_honors: formData.get('with_honors'),
+                answers,
+            }),
+        });
+        if (!response.ok) throw new Error(`API responded with ${response.status}`);
+        const data = await response.json();
+        return data.p_confirm;
+    } catch (err) {
+        console.warn('Prediction API unavailable, using local model:', err);
+        return predictProbability(formData);
+    } finally {
+        clearTimeout(timeout);
+        if (submitButton) submitButton.disabled = false;
+    }
+}
+
+
+// --- UI ---
+
+const GENERAL_QUESTIONS = [
+    { id: 'q11', text: 'Did you choose this program because it matches your interests?' },
+    { id: 'q12', text: 'Do you feel confident you can succeed in this program?' },
+    { id: 'q13', text: 'Have you looked into the careers this program leads to?' },
+    { id: 'q14', text: 'Do your parents or guardians support your choice?' },
+    { id: 'q15', text: 'Did relatives or friends influence your choice?' },
+    { id: 'q16', text: 'Do you know someone currently taking this program?' },
+    { id: 'q17', text: 'Can your family afford the tuition and other expenses?' },
+    { id: 'q18', text: 'Are scholarships or financial aid available for this program?' },
+    { id: 'q19', text: 'Is the university near where you live?' },
+    { id: 'q20', text: 'Did you also apply to other programs?' },
+];
+
+const ANSWER_NAMES = ['gwa', 'shs_strand', 'high_school_type', 'with_honors',
+    ...Array.from({ length: 20 }, (_, i) => `q${i + 1}`)];
+
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let toastTimer;
+function showAlert(message) {
+    const messageBox = document.getElementById('messageBox');
+    document.getElementById('messageText').textContent = message;
+    messageBox.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { messageBox.hidden = true; }, 5000);
+}
+
+function questionHTML(q, number) {
+    const text = q.text.replace(/^\d+\.\s*/, '');
     return `
-        <div class="input-group group">
-            <label for="${q.id}" class="block text-base font-bold text-fuchsia-950 mb-2 group-hover:text-fuchsia-600 transition-colors">${q.text}</label>
-            <select id="${q.id}" name="${q.id}" required 
-                    class="w-full rounded-2xl border-2 border-fuchsia-200 bg-white px-4 py-3 text-lg font-bold focus:border-fuchsia-500 focus:outline-none focus:ring-4 focus:ring-fuchsia-500/20 transition-all cursor-pointer hover:border-fuchsia-400 hover:shadow-md">
-                <option value="" disabled selected>Select...</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-            </select>
-        </div>
-    `;
+        <fieldset class="item item--numbered" data-name="${q.id}">
+            <span class="item__n" aria-hidden="true">${number}</span>
+            <legend class="item__q">${text}</legend>
+            <div class="ovals">
+                <label class="oval"><input type="radio" name="${q.id}" value="Yes" required><span>Yes</span></label>
+                <label class="oval"><input type="radio" name="${q.id}" value="No"><span>No</span></label>
+            </div>
+        </fieldset>`;
 }
 
 function loadQuestions() {
-    const container = document.getElementById('dynamicQuestions');
-    
-    // Clear existing questions
-    container.innerHTML = '';
-    
-    // Insert new section heading
-    const sectionHeading = document.createElement('div');
-    sectionHeading.className = 'mb-6 flex items-center gap-3';
-    sectionHeading.innerHTML = `
-        <span class="bg-fuchsia-200 text-fuchsia-800 w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm transform rotate-3">2</span>
-        <h2 class="text-2xl font-black text-fuchsia-950">${CURRENT_MODEL.TITLE} Factors</h2>
-    `;
-    container.appendChild(sectionHeading);
-
-    // Create a grid for dynamic questions
-    const gridContainer = document.createElement('div');
-    gridContainer.className = 'grid grid-cols-1 gap-6';
-
-    // Insert questions for the current model
-    CURRENT_MODEL.QUESTIONS.forEach(q => {
-        gridContainer.insertAdjacentHTML('beforeend', generateQuestionHTML(q));
-    });
-    
-    container.appendChild(gridContainer);
+    document.getElementById('programTitle').textContent = `About ${CURRENT_MODEL.TITLE.replace('Bachelor of Science in ', '')}`;
+    document.getElementById('dynamicQuestions').innerHTML =
+        CURRENT_MODEL.QUESTIONS.map((q, i) => questionHTML(q, i + 5)).join('');
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded fired');
-    const courseTypeSelect = document.getElementById('courseType');
-    console.log('courseType element:', courseTypeSelect);
-    
-    if (!courseTypeSelect) {
-        console.error('courseType select element not found');
-        return;
-    }
-    
-    courseTypeSelect.addEventListener('change', function() {
-        console.log('Course type changed to:', this.value);
-        const selectedKey = this.value;
-        const predictionForm = document.getElementById('predictionForm');
-        
-        if (!selectedKey) {
-            console.log('No course selected, hiding form');
-            predictionForm.classList.add('hidden');
-            document.getElementById('resultCard').classList.add('hidden');
-            return;
-        }
-        
-        console.log('Showing form and loading questions for:', selectedKey);
-        predictionForm.classList.remove('hidden');
-        
-        CURRENT_MODEL = MODELS[selectedKey];
-        console.log('Current model:', CURRENT_MODEL);
-        loadQuestions();
-        
-        document.getElementById('resultCard').classList.add('hidden');
+function itemFor(name) {
+    const field = document.querySelector(`#predictionForm [name="${name}"]`);
+    return field && field.closest('.item');
+}
+
+function unansweredNames(formData) {
+    return ANSWER_NAMES.filter(name => !formData.get(name));
+}
+
+function updateAnswerCount() {
+    const remaining = unansweredNames(new FormData(document.getElementById('predictionForm'))).length;
+    document.getElementById('answerCount').textContent =
+        remaining === 0 ? 'All 24 answered.' : `${24 - remaining} of 24 answered`;
+}
+
+// Shades ovals one after another, like a pencil working down a column.
+function shadeInSequence(bubbles, delay) {
+    bubbles.forEach((b, i) => {
+        if (reducedMotion) b.classList.add('is-shaded');
+        else setTimeout(() => b.classList.add('is-shaded'), i * delay);
     });
+}
 
-    document.getElementById('predictionForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const selectedCourse = document.getElementById('courseType').value;
-        if (!selectedCourse) {
-            showAlert('Please select a program first.');
-            return;
+function buildNameGrid() {
+    const container = document.getElementById('nameBubbles');
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const shaded = [];
+    'TAHAK'.split('').forEach(letter => {
+        const col = document.createElement('div');
+        col.className = 'namegrid__col';
+        for (const ch of alphabet) {
+            const b = document.createElement('span');
+            b.className = 'nb';
+            b.textContent = ch;
+            col.appendChild(b);
+            if (ch === letter) shaded.push(b);
         }
-        
-        // Check if form is valid (all required fields filled)
-        if (!this.checkValidity()) {
-            showAlert('Please fill in all required fields before submitting.');
-            return;
-        }
-        
-        const formData = new FormData(e.target);
-        const gwaInput = formData.get('gwa');
-
-        if (!gwaInput || parseFloat(gwaInput) < CURRENT_MODEL.GWA_SCALE.MIN || parseFloat(gwaInput) > CURRENT_MODEL.GWA_SCALE.MAX) {
-            showAlert(`GWA must be between ${CURRENT_MODEL.GWA_SCALE.MIN} and ${CURRENT_MODEL.GWA_SCALE.MAX}.`);
-            return;
-        }
-
-        const p_confirm = predictProbability(formData);
-        displayResult(p_confirm);
+        container.appendChild(col);
     });
-});
-
-// Deprecated event listener code below (kept for reference but won't execute):
-/*
-document.getElementById('courseType').addEventListener('change', function() {
-    const selectedKey = this.value;
-    const predictionForm = document.getElementById('predictionForm');
-    
-    if (!selectedKey) {
-        // Hide entire form if no program selected
-        predictionForm.classList.add('hidden');
-        document.getElementById('resultCard').classList.add('hidden');
-        return;
-    }
-    
-    // Show form when program is selected
-    predictionForm.classList.remove('hidden');
-    
-    CURRENT_MODEL = MODELS[selectedKey];
-    loadQuestions();
-    
-    // Optionally hide result card when model changes
-    document.getElementById('resultCard').classList.add('hidden');
-});
-
-document.getElementById('predictionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const selectedCourse = document.getElementById('courseType').value;
-    if (!selectedCourse) {
-        showAlert('Please select a program first.');
-        return;
-    }
-    
-    // Check if form is valid (all required fields filled)
-    if (!this.checkValidity()) {
-        showAlert('Please fill in all required fields before submitting.');
-        return;
-    }
-    
-    const formData = new FormData(e.target);
-    const gwaInput = formData.get('gwa');
-
-    if (!gwaInput || parseFloat(gwaInput) < CURRENT_MODEL.GWA_SCALE.MIN || parseFloat(gwaInput) > CURRENT_MODEL.GWA_SCALE.MAX) {
-        showAlert(`GWA must be between ${CURRENT_MODEL.GWA_SCALE.MIN} and ${CURRENT_MODEL.GWA_SCALE.MAX}.`);
-        return;
-    }
-
-    const p_confirm = predictProbability(formData);
-    displayResult(p_confirm);
-});
-*/
+    setTimeout(() => shadeInSequence(shaded, 180), 300);
+}
 
 function displayResult(p_confirm) {
     const resultCard = document.getElementById('resultCard');
-    const resultText = document.getElementById('resultText');
-    const progressFill = document.getElementById('progressFill');
-    
-    // Clamp probability between 0 and 1 (though sigmoid should handle this)
-    const clamped_p_confirm = Math.min(Math.max(p_confirm, 0.0), 1.0);
-    const percentage = (clamped_p_confirm * 100).toFixed(1);
-    
-    let resultClass = '';
-    let message = '';
-    let barColor = '';
+    const pct = Math.round(Math.min(Math.max(p_confirm, 0), 1) * 100);
+    const program = CURRENT_MODEL.TITLE.replace('Bachelor of Science in ', '');
 
-    if (clamped_p_confirm >= 0.8) {
-        message = `🎉 AMAZING CHANCE (${percentage}%) 🎉<br/>You are very likely to be confirmed!`;
-        resultClass = 'text-emerald-600';
-        barColor = 'bg-gradient-to-r from-emerald-400 to-emerald-500';
-        
-        // Trigger confetti!
-        if (typeof confetti === 'function') {
-            setTimeout(() => {
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 },
-                    colors: ['#34d399', '#10b981', '#f59e0b', '#8b5cf6']
-                });
-            }, 300);
-        }
-    } else if (clamped_p_confirm >= 0.5) {
-        message = `👍 MODERATE CHANCE (${percentage}%) 👍<br/>You are likely to be confirmed.`;
-        resultClass = 'text-amber-600';
-        barColor = 'bg-gradient-to-r from-amber-400 to-amber-500';
+    let tone, heading, body;
+    if (pct >= 80) {
+        tone = 'high';
+        heading = 'You’d very likely confirm your slot.';
+        body = `Your answers line up with students who take their place in ${program}.`;
+    } else if (pct >= 50) {
+        tone = 'mid';
+        heading = 'You’d probably confirm, with some doubts.';
+        body = 'Some of your answers point toward other options. Talk them through with family or a guidance counselor before enrollment.';
     } else {
-        message = `😬 LOW CHANCE (${percentage}%) 😬<br/>You are unlikely to be confirmed.`;
-        resultClass = 'text-rose-600';
-        barColor = 'bg-gradient-to-r from-rose-400 to-rose-500';
+        tone = 'low';
+        heading = 'You might not confirm this slot.';
+        body = `Many of your answers point away from ${program}. Try another program you applied to and compare.`;
     }
 
-    resultText.innerHTML = `<p class="text-2xl font-black ${resultClass}">${message}</p>`;
-    
-    // Show card and animate in
-    resultCard.classList.remove('hidden');
-    setTimeout(() => {
-        resultCard.classList.remove('scale-95', 'opacity-0');
-        resultCard.classList.add('scale-100', 'opacity-100');
-    }, 50);
-    
-    progressFill.style.width = '0%'; 
-    progressFill.className = `h-full rounded-full transition-all duration-1500 ease-out relative overflow-hidden ${barColor}`;
-    
-    setTimeout(() => {
-        progressFill.style.width = `${percentage}%`;
-    }, 300);
+    resultCard.className = `result result--${tone}`;
+    document.getElementById('resultProgram').textContent = program;
+    document.getElementById('resultText').innerHTML = `<p><strong>${heading}</strong>${body}</p>`;
 
-    resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const bar = document.getElementById('progressFill');
+    bar.innerHTML = '';
+    const bubbles = Array.from({ length: 20 }, () => {
+        const b = document.createElement('span');
+        b.className = 'nb';
+        bar.appendChild(b);
+        return b;
+    });
+
+    resultCard.hidden = false;
+    resultCard.focus({ preventScroll: true });
+    resultCard.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+
+    const percentEl = document.getElementById('resultPercent');
+    const filled = Math.round(pct / 5);
+    if (reducedMotion) {
+        percentEl.textContent = pct;
+        shadeInSequence(bubbles.slice(0, filled), 0);
+        return;
+    }
+    percentEl.textContent = 0;
+    const step = 45;
+    setTimeout(() => {
+        shadeInSequence(bubbles.slice(0, filled), step);
+        const duration = Math.max(filled * step, 1);
+        const start = performance.now();
+        const tick = now => {
+            const t = Math.min((now - start) / duration, 1);
+            percentEl.textContent = Math.round(pct * t);
+            if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, 400);
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('predictionForm');
+    const formContainer = document.getElementById('formContainer');
+    const resultCard = document.getElementById('resultCard');
+
+    buildNameGrid();
+    document.getElementById('generalQuestions').innerHTML =
+        GENERAL_QUESTIONS.map((q, i) => questionHTML(q, i + 15)).join('');
+
+    form.addEventListener('change', function (e) {
+        if (e.target.name === 'courseType') {
+            CURRENT_MODEL = MODELS[e.target.value];
+            loadQuestions();
+            formContainer.hidden = false;
+            resultCard.hidden = true;
+        }
+        const item = e.target.closest('.item');
+        if (item) item.classList.remove('is-missing');
+        updateAnswerCount();
+    });
+
+    form.addEventListener('input', function (e) {
+        if (e.target.name === 'gwa') e.target.closest('.item').classList.remove('is-missing');
+    });
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const selectedCourse = formData.get('courseType');
+        if (!selectedCourse) {
+            showAlert('Choose a program in Part I first.');
+            return;
+        }
+
+        const missing = unansweredNames(formData);
+        form.querySelectorAll('.is-missing').forEach(el => el.classList.remove('is-missing'));
+        if (missing.length) {
+            missing.forEach(name => itemFor(name).classList.add('is-missing'));
+            const first = itemFor(missing[0]);
+            first.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+            first.querySelector('input').focus({ preventScroll: true });
+            showAlert(missing.length === 1
+                ? '1 item is still blank. It’s marked in red.'
+                : `${missing.length} items are still blank. They’re marked in red.`);
+            return;
+        }
+
+        const gwa = parseFloat(formData.get('gwa'));
+        if (!(gwa >= BASE_GWA_SCALE.MIN && gwa <= BASE_GWA_SCALE.MAX)) {
+            itemFor('gwa').classList.add('is-missing');
+            document.getElementById('gwa').focus();
+            showAlert(`Enter a GWA between ${BASE_GWA_SCALE.MIN} and ${BASE_GWA_SCALE.MAX}.`);
+            return;
+        }
+
+        getPrediction(selectedCourse, formData).then(displayResult);
+    });
+
+    document.getElementById('tryAnother').addEventListener('click', function () {
+        const course = document.getElementById('courseType');
+        course.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+        const checked = course.querySelector('input:checked') || course.querySelector('input');
+        checked.focus({ preventScroll: true });
+    });
+
+    updateAnswerCount();
+});

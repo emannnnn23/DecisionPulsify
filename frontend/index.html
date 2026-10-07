@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAHAK — Slot Confirmation Check</title>
+    <meta name="description" content="Got into a college program? Answer 24 short questions and see how likely you are to confirm your slot.">
+    <meta name="theme-color" content="#DFE9E2">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='50' rx='44' ry='30' fill='%232E3134'/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Firebase SDK Compat version via CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics-compat.js"></script>
+</head>
+
+<body>
+    <main class="sheet">
+        <span class="reg reg--tl" aria-hidden="true"></span>
+        <span class="reg reg--tr" aria-hidden="true"></span>
+        <span class="reg reg--bl" aria-hidden="true"></span>
+        <span class="reg reg--br" aria-hidden="true"></span>
+
+        <header class="masthead">
+            <div class="namegrid">
+                <h1 class="namegrid__boxes" aria-label="TAHAK">
+                    <span>T</span><span>A</span><span>H</span><span>A</span><span>K</span>
+                </h1>
+                <div class="namegrid__bubbles" id="nameBubbles" aria-hidden="true"></div>
+            </div>
+            <div class="masthead__copy">
+                <p class="lede">Got into a college program? Answer 24 short questions and see how likely you are
+                    to confirm your slot.</p>
+                <p class="instruction">Shade one oval per item. Every item needs an answer.</p>
+            </div>
+        </header>
+
+        <form id="predictionForm" novalidate>
+            <fieldset class="part" id="courseType">
+                <legend class="part__title"><span class="part__num">Part I</span> Choose a program</legend>
+                <div class="ovals ovals--stack">
+                    <label class="oval"><input type="radio" name="courseType" value="TOURISM" required><span>Tourism Management</span></label>
+                    <label class="oval"><input type="radio" name="courseType" value="CS"><span>Computer Science</span></label>
+                    <label class="oval"><input type="radio" name="courseType" value="CRIMINOLOGY"><span>Criminology</span></label>
+                    <label class="oval"><input type="radio" name="courseType" value="EDUCATION"><span>Education</span></label>
+                    <label class="oval"><input type="radio" name="courseType" value="NURSING"><span>Nursing</span></label>
+                </div>
+            </fieldset>
+
+            <div id="formContainer" hidden>
+                <section class="part" aria-labelledby="part2">
+                    <h2 class="part__title" id="part2"><span class="part__num">Part II</span> Your academic background</h2>
+
+                    <div class="item item--numbered">
+                        <span class="item__n" aria-hidden="true">1</span>
+                        <label class="item__q" for="gwa">General weighted average (GWA)</label>
+                        <input class="writein" type="number" id="gwa" name="gwa" step="0.01" min="70" max="100"
+                            inputmode="decimal" placeholder="85.50" required>
+                    </div>
+
+                    <fieldset class="item item--numbered">
+                        <span class="item__n" aria-hidden="true">2</span>
+                        <legend class="item__q">SHS strand or track</legend>
+                        <div class="ovals">
+                            <label class="oval"><input type="radio" name="shs_strand" value="STEM" required><span>STEM</span></label>
+                            <label class="oval"><input type="radio" name="shs_strand" value="ABM"><span>ABM</span></label>
+                            <label class="oval"><input type="radio" name="shs_strand" value="HUMSS"><span>HUMSS</span></label>
+                            <label class="oval"><input type="radio" name="shs_strand" value="GAS"><span>GAS</span></label>
+                            <label class="oval"><input type="radio" name="shs_strand" value="TVL"><span>TVL</span></label>
+                            <label class="oval"><input type="radio" name="shs_strand" value="Others"><span>Other</span></label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="item item--numbered">
+                        <span class="item__n" aria-hidden="true">3</span>
+                        <legend class="item__q">Type of high school</legend>
+                        <div class="ovals">
+                            <label class="oval"><input type="radio" name="high_school_type" value="Public" required><span>Public</span></label>
+                            <label class="oval"><input type="radio" name="high_school_type" value="Private"><span>Private</span></label>
+                            <label class="oval"><input type="radio" name="high_school_type" value="Science High School"><span>Science high school</span></label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="item item--numbered">
+                        <span class="item__n" aria-hidden="true">4</span>
+                        <legend class="item__q">Did you graduate with honors?</legend>
+                        <div class="ovals">
+                            <label class="oval"><input type="radio" name="with_honors" value="Yes" required><span>Yes</span></label>
+                            <label class="oval"><input type="radio" name="with_honors" value="No"><span>No</span></label>
+                        </div>
+                    </fieldset>
+                </section>
+
+                <section class="part" aria-labelledby="part3">
+                    <h2 class="part__title" id="part3"><span class="part__num">Part III</span> <span id="programTitle">About the program</span></h2>
+                    <div id="dynamicQuestions"></div>
+                </section>
+
+                <section class="part" aria-labelledby="part4">
+                    <h2 class="part__title" id="part4"><span class="part__num">Part IV</span> Your situation</h2>
+                    <div id="generalQuestions"></div>
+                </section>
+
+                <div class="submit-row">
+                    <button type="submit" class="submit">Check my likelihood</button>
+                    <p class="progress" id="answerCount" aria-live="polite"></p>
+                </div>
+            </div>
+        </form>
+
+        <section id="resultCard" class="result" hidden aria-live="polite" tabindex="-1">
+            <h2 class="part__title"><span class="part__num">Result</span> <span id="resultProgram"></span></h2>
+            <p class="result__figure"><span id="resultPercent">0</span><span class="result__unit">%</span></p>
+            <p class="result__caption">chance you'd confirm your slot</p>
+            <div class="result__bar" id="progressFill" aria-hidden="true"></div>
+            <div id="resultText" class="result__text"></div>
+            <button type="button" class="link-button" id="tryAnother">Try another program</button>
+        </section>
+
+        <footer class="colophon">
+            <p>An estimate from student survey data, not an admission decision.</p>
+            <p>Made by Emanuel.</p>
+        </footer>
+    </main>
+
+    <div id="messageBox" class="toast" role="alert" hidden>
+        <p id="messageText"></p>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
